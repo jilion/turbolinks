@@ -224,7 +224,7 @@ browserSupportsPushState =
   window.history and window.history.pushState and window.history.replaceState and window.history.state != undefined
 
 browserIsntBuggy =
-  !navigator.userAgent.match /CriOS\//
+  !navigator.userAgent.match /(CriOS\/|i(p[oa]d|phone))/i
 
 requestMethodIsSafe =
   requestMethod in ['GET','']
