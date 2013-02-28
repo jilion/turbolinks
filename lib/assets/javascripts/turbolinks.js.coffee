@@ -85,13 +85,16 @@ changePage = (title, body, runScripts) ->
   triggerEvent 'page:change'
 
 executeScriptTags = ->
-  for script in document.body.getElementsByTagName 'script' when script.type in ['', 'text/javascript']
-    copy = document.createElement 'script'
-    copy.setAttribute attr.name, attr.value for attr in script.attributes
-    copy.appendChild document.createTextNode script.innerHTML
-    { parentNode, nextSibling } = script
-    parentNode.removeChild script
-    parentNode.insertBefore copy, nextSibling
+  for script in document.body.getElementsByTagName 'script'
+    # Sometimes the <script> element is executed between the "for" and the "script.type" check
+    # So we ensure the <script> element is still here before trying to execute it...
+    if script? and script.type in ['', 'text/javascript']
+      copy = document.createElement 'script'
+      copy.setAttribute attr.name, attr.value for attr in script.attributes
+      copy.appendChild document.createTextNode script.innerHTML
+      { parentNode, nextSibling } = script
+      parentNode.removeChild script
+      parentNode.insertBefore copy, nextSibling
 
 removeNoscriptTags = ->
   noscriptTags = Array::slice.call document.body.getElementsByTagName 'noscript'
