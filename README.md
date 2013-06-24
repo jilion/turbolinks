@@ -13,7 +13,7 @@ How much faster is it really?
 
 It depends. The more CSS and JavaScript you have, the bigger the benefit of not throwing away the browser instance and recompiling all of it for every page. Just like a CGI script that says "hello world" will be fast, but a CGI script loading Rails on every request will not.
 
-In any case, the benefit ranges from [twice as fast](https://github.com/steveklabnik/turbolinks_test) on apps with little JS/CSS, to [three times as fast](https://github.com/steveklabnik/turbolinks_test/tree/all_the_assets) in apps with lots of it. Of course, your mileage may vary, be dependent on your browser version, the moon cycle, and all other factors affecting performance testing. But at least it's a yardstick.
+In any case, the benefit can be up to [twice as fast](https://github.com/steveklabnik/turbolinks_test/tree/all_the_assets) in apps with lots of JS and CSS. Of course, your mileage may vary, be dependent on your browser version, the moon cycle, and all other factors affecting performance testing. But at least it's a yardstick.
 
 The best way to find out just how fast it is? Try it on your own application. It hardly takes any effort at all.
 
@@ -27,15 +27,26 @@ Turbolinks is designed to be as light-weight as possible (so you won't think twi
 Events
 ------
 
-Since pages will change without a full reload with Turbolinks, you can't by default rely on `DOMContentLoaded` to trigger your JavaScript code or jQuery.ready(). Instead, Turbolinks gives you a range of events to deal with the lifecycle of the page:
+With Turbolinks pages will change without a full reload, so you can't rely on `DOMContentLoaded` or `jQuery.ready()` to trigger your code. Instead Turbolinks fires events on `document` to provide hooks into the lifecycle of the page:
 
-* `page:fetch`   starting to fetch the target page (only called if loading fresh, not from cache).
-* `page:load`    fetched page is being retrieved fresh from the server.
-* `page:restore` fetched page is being retrieved from the 10-slot client-side cache.
-* `page:change`  page has changed to the newly fetched version.
+*Load* a fresh version of a page from the server:
+* `page:fetch` starting to fetch a new target page
+* `page:receive` the page has been fetched from the server, but not yet parsed
+* `page:change` the page has been parsed and changed to the new version
+* `page:load` is fired at the end of the loading process.
 
-So if you wanted to have a client-side spinner, you could listen for `page:fetch` to start it and `page:change` to stop it. If you have DOM transformation that are not idempotent (the best way), you can hook them to happen only on `page:load` instead of `page:change` (as that would run them again on the cached pages).
+Turbolinks caches 10 of these page loads. It listens to the [popstate](https://developer.mozilla.org/en-US/docs/DOM/Manipulating_the_browser_history#The_popstate_event) event and attempts restore page state from the cache when it's triggered. When `popstate` is fired the following process happens:
 
+*Restore* a cached page from the client-side cache:
+* `page:change` page has changed to the cached page.
+* `page:restore` is fired at the end of restore process.
+
+So if you wanted to have a client-side spinner, you could listen for `page:fetch` to start it and `page:receive` to stop it.
+
+    document.addEventListener("page:fetch", startSpinner);
+    document.addEventListener("page:receive", stopSpinner);
+    
+DOM transformations that are idempotent are best. If you have transformations that are not, hook them to happen only on `page:load` instead of `page:change` (as that would run them again on the cached pages).
 
 Initialization
 --------------
@@ -56,6 +67,13 @@ Opting out of Turbolinks
 ------------------------
 
 By default, all internal HTML links will be funneled through Turbolinks, but you can opt out by marking links or their parent container with `data-no-turbolink`. For example, if you mark a div with `data-no-turbolink`, then all links inside of that div will be treated as regular links. If you mark the body, every link on that entire page will be treated as regular links.
+
+```html
+<a href="/">Home (via Turbolinks)</a>
+<div id="some-div" data-no-turbolink>
+  <a href="/">Home (without Turbolinks)</a>
+</div>
+```
 
 Note that internal links to files not ending in .html, or having no extension, will automatically be opted out of Turbolinks. So links to /images/panda.gif will just work as expected.
 
@@ -92,6 +110,13 @@ Evaluating script tags
 
 Turbolinks will evaluate any script tags in pages it visit, if those tags do not have a type or if the type is text/javascript. All other script tags will be ignored.
 
+As a rule of thumb when switching to Turbolinks, move all of your javascript tags inside the `head` and then work backwards, only moving javascript code back to the body if absolutely necessary. If you have any script tags in the body you do not want to be re-evaluated then you can set the `data-turbolinks-eval` attribute to `false`:
+
+```html
+<script type="text/javascript" data-turbolinks-eval=false>
+  console.log("I'm only run once on the initial page load");
+</script>
+```
 
 Triggering a Turbolinks visit manually
 ---------------------------------------
@@ -110,7 +135,7 @@ Compatibility
 
 Turbolinks is designed to work with any browser that fully supports pushState and all the related APIs. This includes Safari 6.0+ (but not Safari 5.1.x!), IE10, and latest Chromes and Firefoxes.
 
-Do note that existing JavaScript libraries may not all be compatible with Turbolinks out of the box due to the change in instantiation cycle. You might very well have to modify them to work with Turbolinks' new set of events.  For help with this, check out the [Turbolinks Compatibility](http://reed.github.com/turbolinks-compatibility) project.
+Do note that existing JavaScript libraries may not all be compatible with Turbolinks out of the box due to the change in instantiation cycle. You might very well have to modify them to work with Turbolinks' new set of events.  For help with this, check out the [Turbolinks Compatibility](http://reed.github.io/turbolinks-compatibility) project.
 
 
 Installation
